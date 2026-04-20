@@ -66,7 +66,7 @@ export default function Pricing({ onBookNow }) {
               </div>
 
               <div className="mb-6">
-                <span className={`font-display text-5xl font-extrabold ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
+                <span className={`font-display text-3xl font-extrabold ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
                   {plan.price}
                 </span>
                 <span className={`text-sm ml-1 ${plan.highlight ? 'text-blue-200' : 'text-gray-400'}`}>{plan.period}</span>

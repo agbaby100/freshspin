@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
 const SERVICE_OPTIONS = [
-  { value: 'wash-fold',    label: 'Wash & Fold',   currency: '₦', price: 3750 },
-  { value: 'dry-cleaning', label: 'Dry Cleaning',  currency: '₦', price: 12000 },
-  { value: 'ironing',      label: 'Ironing',       currency: '₦', price: 2250 },
+  { value: 'wash-fold',    label: 'Wash & Fold',   price: 2.50 },
+  { value: 'dry-cleaning', label: 'Dry Cleaning',  price: 8.00 },
+  { value: 'ironing',      label: 'Ironing',       price: 1.50 },
 ]
 
 const INITIAL = {
@@ -28,6 +28,8 @@ function Field({ label, error, children }) {
 export default function BookingForm({ preselectedService, onSubmit }) {
   const [form, setForm] = useState({ ...INITIAL, service: preselectedService || '' })
   const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -45,7 +47,7 @@ export default function BookingForm({ preselectedService, onSubmit }) {
     else if (!/^\+?[\d\s\-()]{7,15}$/.test(form.phone)) e.phone = 'Enter a valid phone number'
 
     if (!form.address.trim()) e.address = 'Address is required'
-    else if (form.address.trim().length < 10) e.address = 'Please enter your full address'
+    else if (form.address.trim().length < 5) e.address = 'Please enter your full address'
 
     if (!form.service) e.service = 'Please select a service'
 
@@ -55,16 +57,51 @@ export default function BookingForm({ preselectedService, onSubmit }) {
     return e
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const e = validate()
     if (Object.keys(e).length > 0) { setErrors(e); return }
 
+    setSubmitError('')
+    setLoading(true)
+
     const serviceObj = SERVICE_OPTIONS.find((s) => s.value === form.service)
+    const orderId = 'FS-' + Math.floor(Math.random() * 9000 + 1000)
+
+    try {
+      // Send order email via FormSubmit
+      const data = new FormData()
+      data.append('Order ID',     orderId)
+      data.append('name',         form.name)
+      data.append('phone',        form.phone)
+      data.append('address',      form.address)
+      data.append('service',      serviceObj.label)
+      data.append('pickup_date',  form.pickupDate)
+      data.append('notes',        form.notes || 'None')
+      data.append('price',        `₦${(serviceObj.price * 1500).toLocaleString()} /load (est.)`)
+      data.append('_captcha',     'false')
+      data.append('_template',    'table')
+      data.append('_subject',     `📦 New Laundry Order #${orderId} from ${form.name} — FreshSpin`)
+
+      const response = await fetch('https://formsubmit.co/amosungodwin8@gmail.com', {
+        method: 'POST',
+        body: data,
+      })
+
+      if (!response.ok) {
+        setSubmitError('Could not send order confirmation email, but your booking was recorded.')
+      }
+    } catch (err) {
+      console.error('Email send error:', err)
+      setSubmitError('Network error sending email, but your booking was recorded.')
+    } finally {
+      setLoading(false)
+    }
+
+    // Always proceed to order summary regardless of email result
     onSubmit({
       ...form,
-      id: 'FS-' + Math.floor(Math.random() * 9000 + 1000),
+      id: orderId,
       serviceLabel: serviceObj.label,
-      currency: serviceObj.currency,
       price: serviceObj.price,
       submittedAt: new Date().toLocaleString(),
     })
@@ -91,88 +128,67 @@ export default function BookingForm({ preselectedService, onSubmit }) {
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Field label="Full Name" error={errors.name}>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => set('name', e.target.value)}
-                placeholder="e.g. Amaka Obi"
-                className={inputClass('name')}
-              />
+              <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)}
+                placeholder="e.g. Amaka Obi" className={inputClass('name')} />
             </Field>
-
             <Field label="Phone Number" error={errors.phone}>
-              <input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => set('phone', e.target.value)}
-                placeholder="+234 800 000 0000"
-                className={inputClass('phone')}
-              />
+              <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)}
+                placeholder="+234 800 000 0000" className={inputClass('phone')} />
             </Field>
           </div>
 
           <Field label="Pickup Address" error={errors.address}>
-            <input
-              type="text"
-              value={form.address}
-              onChange={(e) => set('address', e.target.value)}
-              placeholder="Street, City, State"
-              className={inputClass('address')}
-            />
+            <input type="text" value={form.address} onChange={(e) => set('address', e.target.value)}
+              placeholder="Street, City, State" className={inputClass('address')} />
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Field label="Service Type" error={errors.service}>
-              <select
-                value={form.service}
-                onChange={(e) => set('service', e.target.value)}
-                className={inputClass('service')}
-              >
+              <select value={form.service} onChange={(e) => set('service', e.target.value)} className={inputClass('service')}>
                 <option value="">Select a service...</option>
                 {SERVICE_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label} — {s.currency}{s.price.toLocaleString()}/load</option>
+                  <option key={s.value} value={s.value}>{s.label} — ₦{(s.price * 1500).toLocaleString()}/load</option>
                 ))}
               </select>
             </Field>
-
             <Field label="Pickup Date" error={errors.pickupDate}>
-              <input
-                type="date"
-                value={form.pickupDate}
-                min={today}
-                onChange={(e) => set('pickupDate', e.target.value)}
-                className={inputClass('pickupDate')}
-              />
+              <input type="date" value={form.pickupDate} min={today}
+                onChange={(e) => set('pickupDate', e.target.value)} className={inputClass('pickupDate')} />
             </Field>
           </div>
 
           <Field label="Special Instructions (optional)" error={''}>
-            <textarea
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
+            <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)}
               placeholder="Any specific care instructions, allergies, or notes..."
-              rows={3}
-              className={`${inputClass('notes')} resize-none`}
-            />
+              rows={3} className={`${inputClass('notes')} resize-none`} />
           </Field>
 
-          {/* Price preview */}
           {selectedService && (
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <div className="text-sm font-semibold text-blue-800">{selectedService.label}</div>
                 <div className="text-xs text-blue-500 mt-0.5">Starting price per load</div>
               </div>
-              <div className="font-display text-2xl font-bold text-blue-700">{selectedService.currency}{selectedService.price.toLocaleString()}</div>
+              <div className="font-display text-2xl font-bold text-blue-700">
+                ₦{(selectedService.price * 1500).toLocaleString()}
+              </div>
             </div>
           )}
 
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl text-lg transition-all hover:scale-[1.02] shadow-lg mt-2"
-          >
-            Confirm Booking →
+          {submitError && (
+            <p className="text-amber-600 text-sm bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
+              ⚠️ {submitError}
+            </p>
+          )}
+
+          <button onClick={handleSubmit} disabled={loading}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl text-lg transition-all hover:scale-[1.02] disabled:scale-100 disabled:cursor-not-allowed shadow-lg mt-2">
+            {loading ? 'Submitting...' : 'Confirm Booking →'}
           </button>
+
+          <p className="text-center text-xs text-gray-400">
+            Order details will be sent to your laundry manager instantly.
+          </p>
         </div>
       </div>
     </section>

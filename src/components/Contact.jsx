@@ -10,12 +10,42 @@ const INFO = [
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!form.name || !form.email || !form.message) return
-    setSent(true)
+    setError('')
+    setLoading(true)
+
+    try {
+      const data = new FormData()
+      data.append('name', form.name)
+      data.append('email', form.email)
+      data.append('message', form.message)
+      data.append('_captcha', 'false')
+      data.append('_template', 'table')
+      data.append('_subject', `💬 New Contact Message from ${form.name} — FreshSpin`)
+
+      const response = await fetch('https://formsubmit.co/amosungodwin8@gmail.com', {
+        method: 'POST',
+        body: data,
+      })
+
+      if (response.ok) {
+        setSent(true)
+        setForm({ name: '', email: '', message: '' })
+      } else {
+        setError('Something went wrong. Please try again.')
+      }
+    } catch (err) {
+      setError('Network error. Please check your connection and try again.')
+      console.error('Error sending message:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -32,7 +62,6 @@ export default function Contact() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {/* Info */}
           <div>
             <h3 className="font-display text-xl font-bold text-gray-900 mb-6">Contact Information</h3>
             <div className="space-y-5">
@@ -48,7 +77,6 @@ export default function Contact() {
                 </div>
               ))}
             </div>
-
             <div className="mt-10 bg-blue-600 rounded-3xl p-6 text-white">
               <div className="font-display text-lg font-bold mb-2">Same-day pickup available!</div>
               <p className="text-blue-200 text-sm leading-relaxed">
@@ -57,64 +85,42 @@ export default function Contact() {
             </div>
           </div>
 
-          {/* Form */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             {sent ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-8">
                 <div className="text-5xl mb-4">📬</div>
                 <h4 className="font-display text-xl font-bold text-gray-900 mb-2">Message Sent!</h4>
                 <p className="text-gray-500 text-sm mb-6">We'll get back to you within 24 hours.</p>
-                <button
-                  onClick={() => { setSent(false); setForm({ name: '', email: '', message: '' }) }}
-                  className="text-blue-600 text-sm font-semibold hover:underline"
-                >
+                <button onClick={() => setSent(false)} className="text-blue-600 text-sm font-semibold hover:underline">
                   Send another message
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
                 <h3 className="font-display text-xl font-bold text-gray-900 mb-2">Send a Message</h3>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Your Name</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => set('name', e.target.value)}
-                    placeholder="Amaka Obi"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  />
+                  <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Amaka Obi"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email Address</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => set('email', e.target.value)}
-                    placeholder="you@email.com"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  />
+                  <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@email.com"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Message</label>
-                  <textarea
-                    value={form.message}
-                    onChange={(e) => set('message', e.target.value)}
-                    placeholder="How can we help you?"
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-                  />
+                  <textarea value={form.message} onChange={(e) => set('message', e.target.value)} placeholder="How can we help you?" rows={4}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none" />
                 </div>
-
-                <button
-                  onClick={handleSend}
-                  disabled={!form.name || !form.email || !form.message}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-2xl transition-all hover:scale-[1.02] disabled:scale-100 disabled:cursor-not-allowed"
-                >
-                  Send Message →
+                {error && (
+                  <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-2">⚠️ {error}</p>
+                )}
+                <button onClick={handleSend} disabled={!form.name || !form.email || !form.message || loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-2xl transition-all hover:scale-[1.02] disabled:scale-100 disabled:cursor-not-allowed">
+                  {loading ? 'Sending...' : 'Send Message →'}
                 </button>
+                <p className="text-center text-xs text-gray-400">Powered by FormSubmit · No spam, ever.</p>
               </div>
             )}
           </div>

@@ -34,7 +34,7 @@ export default function Hero({ onBookNow }) {
             >
               📦 Book Pickup
             </button>
-            <button className="border-2 border-white/40 hover:border-white text-white font-semibold px-8 py-4 rounded-full text-lg transition-all hover:bg-white/10">
+            <button href= "#services" className="border-2 border-white/40 hover:border-white text-white font-semibold px-8 py-4 rounded-full text-lg transition-all hover:bg-white/10">
               Learn More
             </button>
           </div>
@@ -62,7 +62,7 @@ export default function Hero({ onBookNow }) {
                 🧺
               </div>
               <div>
-                <div className="font-semibold text-sm">Order #FS-2847</div>
+                <div className="font-semibold text-[70%]">Order #FS-2847</div>
                 <div className="text-blue-200 text-xs">Wash &amp; Fold</div>
               </div>
               <span className="ml-auto bg-green-400/20 text-green-300 text-xs font-semibold px-3 py-1 rounded-full">
