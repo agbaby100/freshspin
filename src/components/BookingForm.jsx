@@ -1,16 +1,16 @@
 import { useState } from 'react'
 
 const SERVICE_OPTIONS = [
-  { value: 'wash-fold',    label: 'Wash & Fold',   price: 2.50 },
-  { value: 'dry-cleaning', label: 'Dry Cleaning',  price: 8.00 },
-  { value: 'ironing',      label: 'Ironing',       price: 1.50 },
+  { value: 'wash-fold',    label: 'Wash & Fold',   currency: '₦', price: 3750 },
+  { value: 'dry-cleaning', label: 'Dry Cleaning',  currency: '₦', price: 12000 },
+  { value: 'ironing',      label: 'Ironing',       currency: '₦', price: 2250 },
 ]
 
 const INITIAL = {
   name: '',
   phone: '',
   address: '',
-  service: '',
+  services: [],
   pickupDate: '',
   notes: '',
 }
@@ -26,7 +26,7 @@ function Field({ label, error, children }) {
 }
 
 export default function BookingForm({ preselectedService, onSubmit }) {
-  const [form, setForm] = useState({ ...INITIAL, service: preselectedService || '' })
+  const [form, setForm] = useState({ ...INITIAL, services: preselectedService ? [preselectedService] : [] })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -49,7 +49,7 @@ export default function BookingForm({ preselectedService, onSubmit }) {
     if (!form.address.trim()) e.address = 'Address is required'
     else if (form.address.trim().length < 5) e.address = 'Please enter your full address'
 
-    if (!form.service) e.service = 'Please select a service'
+    if (!form.services.length) e.service = 'Please select at least one service'
 
     if (!form.pickupDate) e.pickupDate = 'Pickup date is required'
     else if (form.pickupDate < today) e.pickupDate = 'Pickup date must be today or later'
@@ -64,7 +64,8 @@ export default function BookingForm({ preselectedService, onSubmit }) {
     setSubmitError('')
     setLoading(true)
 
-    const serviceObj = SERVICE_OPTIONS.find((s) => s.value === form.service)
+    const selectedServices = SERVICE_OPTIONS.filter((s) => form.services.includes(s.value))
+    const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
     const orderId = 'FS-' + Math.floor(Math.random() * 9000 + 1000)
 
     try {
@@ -74,10 +75,10 @@ export default function BookingForm({ preselectedService, onSubmit }) {
       data.append('name',         form.name)
       data.append('phone',        form.phone)
       data.append('address',      form.address)
-      data.append('service',      serviceObj.label)
+      data.append('service',      selectedServices.map((s) => s.label).join(', '))
       data.append('pickup_date',  form.pickupDate)
       data.append('notes',        form.notes || 'None')
-      data.append('price',        `₦${(serviceObj.price * 1500).toLocaleString()} /load (est.)`)
+      data.append('price',        `₦${totalPrice.toLocaleString()} /load`)
       data.append('_captcha',     'false')
       data.append('_template',    'table')
       data.append('_subject',     `📦 New Laundry Order #${orderId} from ${form.name} — FreshSpin`)
@@ -101,8 +102,9 @@ export default function BookingForm({ preselectedService, onSubmit }) {
     onSubmit({
       ...form,
       id: orderId,
-      serviceLabel: serviceObj.label,
-      price: serviceObj.price,
+      serviceLabel: selectedServices.map((s) => s.label).join(', '),
+      currency: '₦',
+      price: totalPrice,
       submittedAt: new Date().toLocaleString(),
     })
   }
@@ -112,7 +114,8 @@ export default function BookingForm({ preselectedService, onSubmit }) {
       errors[key] ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50 hover:border-gray-300'
     }`
 
-  const selectedService = SERVICE_OPTIONS.find((s) => s.value === form.service)
+  const selectedServices = SERVICE_OPTIONS.filter((s) => form.services.includes(s.value))
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
 
   return (
     <section className="py-16 bg-white">
@@ -142,14 +145,29 @@ export default function BookingForm({ preselectedService, onSubmit }) {
               placeholder="Street, City, State" className={inputClass('address')} />
           </Field>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Field label="Service Type" error={errors.service}>
-              <select value={form.service} onChange={(e) => set('service', e.target.value)} className={inputClass('service')}>
-                <option value="">Select a service...</option>
-                {SERVICE_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label} — ₦{(s.price * 1500).toLocaleString()}/load</option>
+          <div className="grid grid-cols-1 gap-5">
+            <Field label="Services" error={errors.service}>
+              <div className="space-y-3">
+                {SERVICE_OPTIONS.map((service) => (
+                  <label key={service.value} className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer hover:border-blue-300">
+                    <input
+                      type="checkbox"
+                      checked={form.services.includes(service.value)}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...form.services, service.value]
+                          : form.services.filter((value) => value !== service.value)
+                        set('services', next)
+                      }}
+                      className="h-4 w-4 text-blue-600 rounded"
+                    />
+                    <div>
+                      <div className="font-semibold text-gray-800">{service.label}</div>
+                      <div className="text-sm text-gray-500">{service.currency}{service.price.toLocaleString()}/load</div>
+                    </div>
+                  </label>
                 ))}
-              </select>
+              </div>
             </Field>
             <Field label="Pickup Date" error={errors.pickupDate}>
               <input type="date" value={form.pickupDate} min={today}
@@ -163,14 +181,24 @@ export default function BookingForm({ preselectedService, onSubmit }) {
               rows={3} className={`${inputClass('notes')} resize-none`} />
           </Field>
 
-          {selectedService && (
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold text-blue-800">{selectedService.label}</div>
-                <div className="text-xs text-blue-500 mt-0.5">Starting price per load</div>
+          {selectedServices.length > 0 && (
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm font-semibold text-blue-800">Selected services</div>
+                  <div className="text-xs text-blue-500 mt-0.5">{selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected</div>
+                </div>
+                <div className="font-display text-2xl font-bold text-blue-700">
+                  ₦{totalPrice.toLocaleString()}
+                </div>
               </div>
-              <div className="font-display text-2xl font-bold text-blue-700">
-                ₦{(selectedService.price * 1500).toLocaleString()}
+              <div className="space-y-2 text-sm text-gray-600">
+                {selectedServices.map((service) => (
+                  <div key={service.value} className="flex items-center justify-between">
+                    <span>{service.label}</span>
+                    <span>{service.currency}{service.price.toLocaleString()}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
